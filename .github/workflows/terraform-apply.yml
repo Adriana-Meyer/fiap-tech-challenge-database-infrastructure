@@ -1,0 +1,54 @@
+name: Terraform Apply — RDS Infrastructure
+
+# Manual trigger while the infra is still under development, to avoid
+# burning AWS Academy budget/session time on every merge. Automatic
+# deploy on push to main is enabled later, once the project is closer
+# to delivery (see the Fase 3 plan's sequencing).
+#
+# Requires Repo 2 (kubernetes-infrastructure) to have already been
+# applied at least once in the same AWS session — this repo discovers
+# its VPC/subnets/security group via Terraform data sources, not a
+# hardcoded state reference.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to run'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform plan
+        if: github.event.inputs.action == 'plan'
+        run: terraform plan
+
+      - name: Terraform apply
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve
+
+      - name: Terraform destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
