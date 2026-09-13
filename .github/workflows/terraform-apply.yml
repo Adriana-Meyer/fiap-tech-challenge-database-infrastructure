@@ -2,8 +2,8 @@ name: Terraform Apply — RDS Infrastructure
 
 # Manual trigger while the infra is still under development, to avoid
 # burning AWS Academy budget/session time on every merge. Automatic
-# deploy on push to main is enabled later, once the project is closer
-# to delivery (see the Fase 3 plan's sequencing).
+# deploy on push to main will be enabled later, once the project is closer
+# to delivery.
 #
 # Requires Repo 2 (kubernetes-infrastructure) to have already been
 # applied at least once in the same AWS session — this repo discovers
