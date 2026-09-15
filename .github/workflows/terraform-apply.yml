@@ -1,4 +1,4 @@
-name: Terraform Apply — RDS Infrastructure
+name: Terraform — RDS Infrastructure
 
 # Manual trigger while the infra is still under development, to avoid
 # burning AWS Academy budget/session time on every merge. Automatic
