@@ -74,13 +74,11 @@ export AWS_SESSION_TOKEN=...
 terraform init
 terraform plan
 terraform apply
-
-# Copiar os valores abaixo manualmente para o Secret da App (Repositório 4) —
-# mesmo padrão manual já usado para JWT_SECRET/WEBHOOK_TOKEN
-terraform output db_endpoint
-terraform output db_username
-terraform output -raw db_password
 ```
+
+> **Nota**: como o state é local (existe só dentro do runner que rodou o `apply`, não persiste em lugar nenhum), rodar `apply` fora do workflow de CI (`terraform-apply.yml`) deixa o Terraform sem memória do que já existe na AWS — um segundo `apply` "do zero" contra um banco que já existe tende a falhar por conflito de nome, em vez de simplesmente atualizar. Por isso o fluxo real de uso é sempre pelo `workflow_dispatch` no GitHub Actions, não localmente.
+>
+> No `apply` via CI, o endpoint/usuário/senha do banco são enviados **automaticamente** como Secrets do Repositório 4 (`RDS_DATASOURCE_URL`/`RDS_USERNAME`/`RDS_PASSWORD`, via `gh secret set` — nunca aparecem em log nenhum) — não precisa mais copiar `terraform output` manualmente.
 
 Para desativar tudo ao final da sessão de estudo (economiza orçamento do Lab):
 

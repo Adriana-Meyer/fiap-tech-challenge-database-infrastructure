@@ -49,6 +49,26 @@ jobs:
         if: github.event.inputs.action == 'apply'
         run: terraform apply -auto-approve
 
+      # Piped straight into gh secret set's stdin — never assigned to a
+      # logged variable or passed as a CLI arg, so the password/URL never
+      # appear in the (public) Actions log. GH_TOKEN needs Secrets:
+      # read-and-write on Repo 4 specifically — the default GITHUB_TOKEN
+      # only has access to this repo.
+      - name: Push RDS connection secrets to Repo 4
+        if: github.event.inputs.action == 'apply'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_CROSS_REPO_SECRETS }}
+        run: |
+          REPO4="Adriana-Meyer/fiap-tech-challenge-pos-tech"
+          ENDPOINT=$(terraform output -raw db_endpoint)
+          DB_NAME=$(terraform output -raw db_name)
+
+          echo "jdbc:mysql://${ENDPOINT}/${DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true" \
+            | gh secret set RDS_DATASOURCE_URL --repo "$REPO4"
+
+          terraform output -raw db_username | gh secret set RDS_USERNAME --repo "$REPO4"
+          terraform output -raw db_password | gh secret set RDS_PASSWORD --repo "$REPO4"
+
       - name: Terraform destroy
         if: github.event.inputs.action == 'destroy'
         run: terraform destroy -auto-approve
