@@ -1,9 +1,11 @@
 name: Terraform — RDS Infrastructure
 
-# Manual trigger while the infra is still under development, to avoid
-# burning AWS Academy budget/session time on every merge. Automatic
-# deploy on push to main will be enabled later, once the project is closer
-# to delivery.
+# workflow_dispatch permanently, by design — not a stopgap. Manual
+# trigger avoids burning AWS Academy's limited budget/session time on
+# every merge. The deploy itself is automatic end-to-end once
+# triggered, with no manual steps during the run — only the trigger is
+# manual, fired whenever convenient and the Lab session is active.
+# Tested successfully end-to-end on 2026-09-15.
 #
 # Requires Repo 2 (kubernetes-infrastructure) to have already been
 # applied at least once in the same AWS session — this repo discovers
