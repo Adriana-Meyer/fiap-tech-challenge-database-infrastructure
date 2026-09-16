@@ -1,0 +1,76 @@
+name: Terraform — RDS Infrastructure
+
+# workflow_dispatch permanently, by design — not a stopgap. Manual
+# trigger avoids burning AWS Academy's limited budget/session time on
+# every merge. The deploy itself is automatic end-to-end once
+# triggered, with no manual steps during the run — only the trigger is
+# manual, fired whenever convenient and the Lab session is active.
+# Tested successfully end-to-end on 2026-09-15.
+#
+# Requires Repo 2 (kubernetes-infrastructure) to have already been
+# applied at least once in the same AWS session — this repo discovers
+# its VPC/subnets/security group via Terraform data sources, not a
+# hardcoded state reference.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform action to run'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+
+jobs:
+  terraform:
+    name: Terraform ${{ github.event.inputs.action }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.8
+
+      - name: Terraform init
+        run: terraform init
+
+      - name: Terraform plan
+        if: github.event.inputs.action == 'plan'
+        run: terraform plan
+
+      - name: Terraform apply
+        if: github.event.inputs.action == 'apply'
+        run: terraform apply -auto-approve
+
+      # Piped straight into gh secret set's stdin — never assigned to a
+      # logged variable or passed as a CLI arg, so the password/URL never
+      # appear in the (public) Actions log. GH_TOKEN needs Secrets:
+      # read-and-write on Repo 4 specifically — the default GITHUB_TOKEN
+      # only has access to this repo.
+      - name: Push RDS connection secrets to Repo 4
+        if: github.event.inputs.action == 'apply'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_CROSS_REPO_SECRETS }}
+        run: |
+          REPO4="Adriana-Meyer/fiap-tech-challenge-pos-tech"
+          ENDPOINT=$(terraform output -raw db_endpoint)
+          DB_NAME=$(terraform output -raw db_name)
+
+          echo "jdbc:mysql://${ENDPOINT}/${DB_NAME}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true" \
+            | gh secret set RDS_DATASOURCE_URL --repo "$REPO4"
+
+          terraform output -raw db_username | gh secret set RDS_USERNAME --repo "$REPO4"
+          terraform output -raw db_password | gh secret set RDS_PASSWORD --repo "$REPO4"
+
+      - name: Terraform destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
